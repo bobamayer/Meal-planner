@@ -310,8 +310,19 @@ export default function MealPlanner() {
   const swapRecipe = useCallback((idx) => {
     const cur = suggestions[idx];
     const used = new Set(suggestions.map(s=>s.name));
-    const pool = recipes.filter(r=>r.dinner&&r.protein===cur.protein&&!used.has(r.name));
-    if (!pool.length) return;
+    // If it's a fav slot — swap with any dinner recipe (not just same protein)
+    // If it's a protein slot — swap within same protein only to respect inventory
+    const pool = cur.isFav
+      ? recipes.filter(r => r.dinner && !used.has(r.name))
+      : recipes.filter(r => r.dinner && r.protein === cur.protein && !used.has(r.name));
+    if (!pool.length) {
+      // Fallback: open it up to any dinner recipe if pool is empty
+      const fallback = recipes.filter(r => r.dinner && !used.has(r.name));
+      if (!fallback.length) return;
+      const next = fallback[Math.floor(Math.random()*fallback.length)];
+      setSuggestions(prev=>{ const c=[...prev]; c[idx]={...next,isFav:cur.isFav}; return c; });
+      return;
+    }
     const next = pool[Math.floor(Math.random()*pool.length)];
     setSuggestions(prev=>{ const c=[...prev]; c[idx]={...next,isFav:cur.isFav}; return c; });
   }, [suggestions, recipes]);
